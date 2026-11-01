@@ -13,5 +13,6 @@ for name in ['index.html', 'js/main.js', 'js/worker.js']:
     s = f.read_text()
     s = re.sub(r"\?v=[\w-]+(['\"])", rf"?v={v}\1", s)
     s = re.sub(r"const (BUILD|VER) = '[^']*'", rf"const \1 = '{v}'", s)
+    s = re.sub(r'id="ver">[^<]*<', f'id="ver">{v}<', s)
     f.write_text(s)
 print(v)

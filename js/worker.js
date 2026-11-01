@@ -1,9 +1,9 @@
 // Runs ruby.wasm + the game in a worker so Graphics.update can block synchronously.
 import { RubyVM } from '../vendor/wasm-wasi-2.10.1/package/dist/esm/vm.js';
 import { WASI, File, Directory, OpenFile, PreopenDirectory, ConsoleStdout } from '../vendor/browser_wasi_shim-0.4.2/package/dist/index.js';
-import { Runtime, CTRL } from './rgss.js?v=20261101-1546';
+import { Runtime, CTRL } from './rgss.js?v=20261101-1552';
 
-const VER = '20261101-1546'; // stamped by tools/bump.py so a new version never mixes with cached old files
+const VER = '20261101-1552'; // stamped by tools/bump.py so a new version never mixes with cached old files
 
 const GAME = '../game/';
 const RUBY_WASM = '../vendor/3.4-wasm-wasi-2.10.1/package/dist/ruby+stdlib.wasm';

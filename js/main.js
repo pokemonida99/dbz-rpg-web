@@ -1,5 +1,5 @@
 // Page side: shows frames from the game worker, plays audio, feeds input, decodes images, keeps saves.
-import { CTRL, NKEYS } from './rgss.js?v=20261101-1546';
+import { CTRL, NKEYS } from './rgss.js?v=20261101-1552';
 
 const GAME = 'game/';
 // '~/…' paths are our Traditional-Chinese replacements in overrides/, everything else is the original game
@@ -8,7 +8,7 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
-const BUILD = '20261101-1546'; // shown in the diagnostic so a cached old copy is easy to spot
+const BUILD = '20261101-1552'; // shown in the diagnostic so a cached old copy is easy to spot
 const status = (s) => { $status.textContent = s; $status.hidden = !s; };
 const toast = (s) => {
   const t = document.createElement('div');
@@ -406,7 +406,7 @@ function paint() {
   requestAnimationFrame(paint);
 }
 const qs = new URLSearchParams(location.search);
-const worker = new Worker('js/worker.js?v=20261101-1546', { type: 'module' });
+const worker = new Worker('js/worker.js?v=20261101-1552', { type: 'module' });
 window.gameWorker = worker;
 const stats = { frames: 0 };
 // Boot/runtime notes, shown on screen if the game never draws (phones have no dev console).

@@ -89,7 +89,7 @@
   請將手機轉為橫向
   <small>iPhone 在 Safari 按「分享 → 加入主畫面」，<br>從主畫面開啟就沒有網址列，畫面更大。</small>
 </div>
-<div id="status">載入中…</div>
+<div id="status">載入中…（版本 <span id="ver">20261101-1552</span>）</div>
 <pre id="error" hidden></pre>
 <script>
   // if the game script fails to start (e.g. a half-updated copy in the browser cache), say so instead of "載入中…" forever
@@ -99,7 +99,13 @@
     s.textContent = '啟動失敗，請點這裡重新整理。（' + (e.message || '') + '）';
     s.onclick = () => location.reload();
   });
+  setTimeout(() => {
+    const s = document.getElementById('status');
+    if (window.gameWorker || !/^載入中/.test(s.textContent)) return;
+    s.textContent = '還在載入中…如果一直卡住，請點這裡重新整理。';
+    s.onclick = () => location.reload();
+  }, 15000);
 </script>
-<script type="module" src="js/main.js?v=20261101-1546"></script>
+<script type="module" src="js/main.js?v=20261101-1552"></script>
 </body>
 </html>
