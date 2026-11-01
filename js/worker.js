@@ -96,7 +96,7 @@ async function loadFonts() {
       const f = new FontFace(fam, await (await fetch(url)).arrayBuffer());
       await f.load();
       self.fonts.add(f);
-    } catch (e) { console.warn('font', fam, e); }
+    } catch (e) { console.warn('font', fam, e); post({ t: 'note', s: `字型載入失敗 ${fam}: ${e}` }); }
   }));
 }
 
@@ -203,6 +203,9 @@ function runBench(vm, instance, RG, only) {
   }
   post({ t: 'bench', out });
 }
+
+self.addEventListener('error', (e) => post({ t: 'fatal', s: `worker error: ${e.message}` }));
+self.addEventListener('unhandledrejection', (e) => post({ t: 'fatal', s: `worker rejection: ${(e.reason && e.reason.stack) || e.reason}` }));
 
 self.onmessage = (e) => {
   if (e.data.t === 'init') {

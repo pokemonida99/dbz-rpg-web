@@ -2,7 +2,12 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- launched from the iPhone home screen it runs without Safari's toolbars -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="龍珠Z RPG">
 <title>龍珠Z RPG 網頁版</title>
 <!-- GitHub Pages can't send COOP/COEP headers; this service worker adds them (SharedArrayBuffer needs them) -->
 <script>
@@ -31,6 +36,36 @@
   #panel .slot small { color: #6a4a24; min-height: 1em; }
   #panel .slot.sel, #panel .slot:hover { border-color: #c8642a; background: #fbe6bf; }
   #panel .hint { margin: 8px 0 0; font-size: 12px; color: #6a4a24; }
+  /* ---------- phones / tablets (touch): landscape layout with on-screen pad ---------- */
+  #pad, #rotate, #panel .close { display: none; }
+  html.touch, html.touch body { touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  html.touch #screen { width: auto; height: min(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom), (100vw - 300px) * 3 / 4); }
+  html.touch #pad { display: block; }
+  html.touch #bar { top: max(6px, env(safe-area-inset-top)); right: max(6px, env(safe-area-inset-right)); gap: 4px; flex-direction: column; align-items: stretch; }
+  html.touch #bar button { padding: 6px 8px; font-size: 12px; min-width: 52px; }
+  html.touch #bar kbd { display: none; }
+  html.touch #panel .close { display: block; margin: 10px auto 0; font: inherit; padding: 6px 18px; border-radius: 4px; border: 2px solid #c8642a; background: #fbe6bf; }
+  html.touch #panel .box { max-height: 92dvh; overflow: auto; }
+  html.touch #panel .hint { display: none; }
+  .ctl { position: fixed; z-index: 4; }
+  .ctl b { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font: 600 16px system-ui, sans-serif; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.35); box-sizing: border-box; }
+  .ctl b.down { background: rgba(255,200,90,.55); border-color: #ffd27a; }
+  #dpad { left: max(14px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); width: 136px; height: 136px; border-radius: 50%; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.2); }
+  #dpad i { position: absolute; width: 44px; height: 44px; border-radius: 8px; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.3); box-sizing: border-box; }
+  #dpad i.down { background: rgba(255,200,90,.55); border-color: #ffd27a; }
+  #dpad i[data-d="3"] { left: 44px; top: 2px; } #dpad i[data-d="0"] { left: 44px; bottom: 2px; }
+  #dpad i[data-d="1"] { left: 2px; top: 44px; } #dpad i[data-d="2"] { right: 2px; top: 44px; }
+  #btns { right: max(14px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); width: 136px; height: 136px; }
+  #btns .a { position: absolute; right: 0; top: 24px; width: 66px; height: 66px; font-size: 20px; }
+  #btns .b { position: absolute; left: 4px; bottom: 0; width: 56px; height: 56px; }
+  #small { right: max(10px, env(safe-area-inset-right)); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 146px); display: grid; grid-template-columns: repeat(3, 40px); gap: 6px; }
+  #small b { width: 40px; height: 32px; border-radius: 8px; font-size: 13px; }
+  #lr { left: max(14px, env(safe-area-inset-left)); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 146px); display: grid; grid-template-columns: repeat(3, 40px); gap: 6px; }
+  #lr b { width: 40px; height: 32px; border-radius: 8px; font-size: 12px; }
+  #rotate { position: fixed; inset: 0; z-index: 20; background: #000; color: #eee; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font: 17px system-ui, sans-serif; text-align: center; padding: 24px; }
+  #rotate svg { width: 64px; height: 64px; }
+  #rotate small { color: #999; font-size: 13px; line-height: 1.6; }
+  @media (orientation: portrait) { html.touch #rotate { display: flex; } }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: rgba(0,0,0,.85); border: 1px solid #555; padding: 8px 14px; border-radius: 6px; white-space: pre-wrap; max-width: 80vw; }
 </style>
 </head>
@@ -42,6 +77,17 @@
   <button id="btn-speed" title="戰鬥時加快兩倍">戰鬥 2×<kbd>F8</kbd></button>
 </div>
 <div id="panel" hidden></div>
+<div id="pad">
+  <div id="dpad" class="ctl"><i data-d="3"></i><i data-d="1"></i><i data-d="2"></i><i data-d="0"></i></div>
+  <div id="lr" class="ctl"><b data-k="10">L</b><b data-k="4">Shift</b><b data-k="11">R</b></div>
+  <div id="small" class="ctl"><b data-k="7">X</b><b data-k="8">Y</b><b data-k="9">Z</b></div>
+  <div id="btns" class="ctl"><b class="a" data-k="6">A</b><b class="b" data-k="5">B</b></div>
+</div>
+<div id="rotate">
+  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3"><rect x="20" y="6" width="24" height="40" rx="4"/><path d="M8 50h40a6 6 0 0 0 6-6V30" /><path d="M48 34l6-6 6 6"/></svg>
+  請將手機轉為橫向
+  <small>iPhone 在 Safari 按「分享 → 加入主畫面」，<br>從主畫面開啟就沒有網址列，畫面更大。</small>
+</div>
 <div id="status">載入中…</div>
 <pre id="error" hidden></pre>
 <script type="module" src="js/main.js"></script>

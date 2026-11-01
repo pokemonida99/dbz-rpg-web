@@ -53,6 +53,8 @@ Ruby 在 worker 裡同步執行，`Graphics.update` 用 `Atomics.wait` 等下一
 
 方向鍵移動；Z / Enter / 空白＝確認（C）；X / Esc＝取消（B）；Shift＝A；A / S / D＝X / Y / Z；Q / W＝L / R；F12＝重設。
 
+手機／平板（觸控裝置）：強制橫向，左邊方向鍵、右邊 A（確認）/B（取消）與 X/Y/Z、L/Shift/R；直向時顯示轉向提示。iPhone 建議「加入主畫面」後開啟。`?touch` 可在桌機強制顯示觸控版面。遊戲沒啟動時畫面會顯示診斷資訊。
+
 網頁加的功能：**F2 存檔、F4 讀檔**（8 個欄位，右上角也有按鈕）、**F8 切換戰鬥 2 倍速**（預設開啟，設定記在瀏覽器）。
 
 ## 繁體中文
@@ -72,5 +74,5 @@ Ruby 在 worker 裡同步執行，`Graphics.update` 用 `Atomics.wait` 等下一
 
 - MIDI 背景音樂（42 首 .mid）尚未播放
 - 音效實際聽感未驗證
-- 手機觸控按鍵、Safari 相容性
+- iPhone Safari 尚未在實機驗證（使用者回報黑畫面，已加診斷資訊待回報）
 - 部署（GitHub Pages 需要 coi-serviceworker 補 COOP/COEP；檔名需轉成 NFC）

@@ -108,6 +108,58 @@ window.addEventListener('keyup', (e) => onKey(e, 0));
 window.addEventListener('blur', () => { for (let i = 0; i < NKEYS; i++) Atomics.store(ctrl, CTRL.KEYS + i, 0); });
 window.addEventListener('pointerdown', () => audio.unlock());
 
+// ---------- touch devices: on-screen pad (landscape layout lives in index.html) ----------
+const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || location.search.includes('touch');
+if (isTouch) {
+  document.documentElement.classList.add('touch');
+  // each pointer holds at most one game key; releasing (or sliding off) lets it go
+  const held = new Map(); // pointerId -> { key, el }
+  const press = (id, key, el) => {
+    const cur = held.get(id);
+    if (cur && cur.key === key) return;
+    if (cur) { setKey(cur.key, 0); cur.el.classList.remove('down'); }
+    if (key === null) { held.delete(id); return; }
+    held.set(id, { key, el });
+    setKey(key, 1);
+    if (key === 4) setKey(12, 1);
+    el.classList.add('down');
+  };
+  const release = (id) => {
+    const cur = held.get(id);
+    if (!cur) return;
+    setKey(cur.key, 0);
+    if (cur.key === 4) setKey(12, 0);
+    cur.el.classList.remove('down');
+    held.delete(id);
+  };
+  // d-pad: the direction is picked from the angle to the pad's centre, so sliding the thumb changes it
+  const dpad = document.getElementById('dpad');
+  const arrows = [...dpad.querySelectorAll('i')];
+  const dirAt = (e) => {
+    const r = dpad.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    if (Math.hypot(dx, dy) < 14) return null;
+    if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 1 : 2;
+    return dy < 0 ? 3 : 0;
+  };
+  const dpadMove = (e) => {
+    const d = dirAt(e);
+    if (d === null) { release(e.pointerId); return; }
+    press(e.pointerId, d, arrows.find((a) => Number(a.dataset.d) === d));
+  };
+  dpad.addEventListener('pointerdown', (e) => { dpad.setPointerCapture(e.pointerId); dpadMove(e); e.preventDefault(); });
+  dpad.addEventListener('pointermove', (e) => { if (held.has(e.pointerId)) dpadMove(e); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) dpad.addEventListener(ev, (e) => release(e.pointerId));
+  for (const b of document.querySelectorAll('#pad b[data-k]')) {
+    b.addEventListener('pointerdown', (e) => { b.setPointerCapture(e.pointerId); press(e.pointerId, Number(b.dataset.k), b); e.preventDefault(); });
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, (e) => release(e.pointerId));
+  }
+  // iOS only lets audio start from a user gesture
+  for (const ev of ['touchend', 'click']) window.addEventListener(ev, () => audio.unlock(), { passive: true });
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+}
+
 // ---------- quick save / load panel, battle speed ----------
 const META_KEY = 'dbz-quick-meta';
 const SLOTS = 8;
@@ -156,14 +208,14 @@ const panel = {
       const when = m ? new Date(m.time).toLocaleString('zh-TW', { hour12: false }) : '（空）';
       rows.push(`<button class="slot${i === this.sel ? ' sel' : ''}" data-slot="${i}"><b>${i}</b><span>${when}</span><small>${m ? escapeHtml(m.info) : ''}</small></button>`);
     }
-    this.el.innerHTML = `<div class="box"><h2>${title}</h2>${rows.join('')}<p class="hint">↑↓ 選擇　Enter 確定　Esc 取消</p></div>`;
+    this.el.innerHTML = `<div class="box"><h2>${title}</h2>${rows.join('')}<p class="hint">↑↓ 選擇　Enter 確定　Esc 取消</p><button class="close" data-close>取消</button></div>`;
   },
 };
 const escapeHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 panel.el.addEventListener('click', (e) => {
   const b = e.target.closest('[data-slot]');
   if (b) panel.pick(Number(b.dataset.slot));
-  else if (e.target === panel.el) panel.close();
+  else if (e.target === panel.el || e.target.closest('[data-close]')) panel.close();
 });
 document.getElementById('btn-save').onclick = () => panel.show('save');
 document.getElementById('btn-load').onclick = () => panel.show('load');
@@ -304,6 +356,7 @@ async function decode({ path, pix }) {
     bmp.close();
   } catch (e) {
     console.warn('decode', path, e);
+    note(`圖片解碼失敗 ${path}: ${e}`);
     w = -1;
   }
   ctrl[CTRL.IMG_W] = w;
@@ -332,6 +385,22 @@ const qs = new URLSearchParams(location.search);
 const worker = new Worker('js/worker.js', { type: 'module' });
 window.gameWorker = worker;
 const stats = { frames: 0 };
+// Boot/runtime notes, shown on screen if the game never draws (phones have no dev console).
+const diag = [];
+const note = (s) => {
+  const line = `${((performance.now() / 1000) | 0)}s ${s}`;
+  // progress messages ("載入資料 3/141") replace the previous one instead of piling up
+  if (diag.length && /^載入資料/.test(s) && /載入資料/.test(diag[diag.length - 1])) diag[diag.length - 1] = line;
+  else diag.push(line);
+  if (diag.length > 40) diag.shift();
+};
+window.diag = diag;
+function showDiag(reason) {
+  $err.hidden = false;
+  $err.textContent = `${reason}\n請截圖這個畫面回報。\n\n畫面幀=${stats.frames} 隔離=${self.crossOriginIsolated}\n${navigator.userAgent}\n\n${diag.join('\n')}`;
+}
+let started = false;
+setTimeout(() => { if (!started) showDiag('遊戲 60 秒內沒有啟動完成。'); }, 60000);
 window.pageStats = stats;
 
 worker.onmessage = (e) => {
@@ -341,18 +410,24 @@ worker.onmessage = (e) => {
     case 'audio': audio.call(m); break;
     case 'resize': $screen.width = m.w; $screen.height = m.h; break;
     case 'save': idbPut(m.name, m.data); break;
-    case 'status': status(m.s); break;
+    case 'status': status(m.s); if (m.s) note(m.s); break;
+    case 'started':
+      started = true;
+      note('Ruby 啟動完成');
+      setTimeout(() => { if (stats.frames === 0) showDiag('遊戲已啟動但畫面沒有更新。'); }, 15000);
+      break;
+    case 'note': note(m.s); break;
     case 'debug': stats.debug = m; break;
     case 'quick': onQuick(m); break;
     case 'dbglog': (stats.log ||= []).push(m.s); break;
     case 'bench': window.benchOut = m.out; console.log(m.out.join('\n')); break;
     case 'toast': console.log('[print]', m.s); toast(m.s); break;
-    case 'fatal': console.error(m.s); $err.textContent = m.s; $err.hidden = false; break;
+    case 'fatal': console.error(m.s); note(m.s); showDiag('發生錯誤：'); break;
     default: break;
   }
 };
 requestAnimationFrame(paint);
-worker.onerror = (e) => { $err.textContent = String(e.message || e); $err.hidden = false; };
+worker.onerror = (e) => { note(`worker 錯誤：${e.message || e} ${e.filename || ''}:${e.lineno || ''}`); showDiag('背景執行緒載入失敗。'); };
 
 (async () => {
   const saves = await idbAll().catch(() => []);
