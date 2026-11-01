@@ -1,12 +1,34 @@
 // Runs ruby.wasm + the game in a worker so Graphics.update can block synchronously.
 import { RubyVM } from '../vendor/wasm-wasi-2.10.1/package/dist/esm/vm.js';
 import { WASI, File, Directory, OpenFile, PreopenDirectory, ConsoleStdout } from '../vendor/browser_wasi_shim-0.4.2/package/dist/index.js';
-import { Runtime, CTRL } from './rgss.js?v=20261101-1552';
+import { Runtime, CTRL } from './rgss.js?v=20261101-1556';
 
-const VER = '20261101-1552'; // stamped by tools/bump.py so a new version never mixes with cached old files
+const VER = '20261101-1556'; // stamped by tools/bump.py so a new version never mixes with cached old files
 
 const GAME = '../game/';
 const RUBY_WASM = '../vendor/3.4-wasm-wasi-2.10.1/package/dist/ruby+stdlib.wasm';
+const RUBY_WASM_BYTES = 30635497; // for the progress bar when the response has no usable Content-Length
+const progress = (k, v, extra = {}) => post({ t: 'progress', k, v, ...extra });
+
+// fetch the engine, reporting download progress (at most every 1%)
+async function fetchWasm() {
+  const r = await fetch(RUBY_WASM);
+  const len = Number(r.headers.get('content-length'));
+  const enc = r.headers.get('content-encoding');
+  const total = len && (!enc || enc === 'identity') ? len : RUBY_WASM_BYTES;
+  if (!r.body || typeof TransformStream === 'undefined') { progress('wasm', 1, { mb: total / 1048576 }); return r; }
+  let got = 0, last = -1;
+  const body = r.body.pipeThrough(new TransformStream({
+    transform(chunk, ctl) {
+      got += chunk.byteLength;
+      const v = Math.min(1, got / total);
+      if (v - last >= 0.01 || v === 1) { last = v; progress('wasm', v, { mb: got / 1048576 }); }
+      ctl.enqueue(chunk);
+    },
+    flush() { progress('wasm', 1, { mb: got / 1048576 }); },
+  }));
+  return new Response(body, { headers: { 'Content-Type': 'application/wasm' } });
+}
 const PERSIST = /^(Save.*\.rvdata|Save_Auto\.rvdata|QuickSave\d+\.rvdata|Game\.ini)$/i;
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
@@ -65,6 +87,7 @@ async function buildFs(manifest, saves) {
     const name = parts.pop();
     dirOf(parts).set(name, new File(buf));
     status(`載入資料 ${++done}/${need.length}`);
+    progress('data', done / need.length);
   }));
   for (const [k, v] of saves) root.set(k, new File(v));
   return root;
@@ -107,9 +130,13 @@ async function start(init) {
   self.RG = RG;
   RG.turbo = init.turbo || 1;
 
+  // the engine is the biggest download; start it right away, alongside the game data
+  const modP = WebAssembly.compileStreaming(fetchWasm());
+  modP.catch(() => {}); // awaited below; avoid an unhandled-rejection report meanwhile
   status('載入清單…');
   const [manifest, overrides, s2t] = await Promise.all(
     ['../manifest.json', '../overrides/list.json', 's2t.json'].map(async (p) => (await fetch(`${p}?v=${VER}`)).json()));
+  progress('list', 1);
   RG.setManifest(manifest);
   RG.setOverrides(overrides);
   RG.setS2T(s2t);
@@ -135,7 +162,7 @@ async function start(init) {
   };
 
   status('啟動 Ruby…');
-  const mod = await WebAssembly.compileStreaming(fetch(RUBY_WASM));
+  const mod = await modP;
   const wasi = new WASI([], [], [
     new OpenFile(new File([])),
     ConsoleStdout.lineBuffered((m) => console.log(m)),

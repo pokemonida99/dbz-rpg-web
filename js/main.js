@@ -1,5 +1,5 @@
 // Page side: shows frames from the game worker, plays audio, feeds input, decodes images, keeps saves.
-import { CTRL, NKEYS } from './rgss.js?v=20261101-1552';
+import { CTRL, NKEYS } from './rgss.js?v=20261101-1556';
 
 const GAME = 'game/';
 // '~/…' paths are our Traditional-Chinese replacements in overrides/, everything else is the original game
@@ -8,8 +8,33 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
-const BUILD = '20261101-1552'; // shown in the diagnostic so a cached old copy is easy to spot
-const status = (s) => { $status.textContent = s; $status.hidden = !s; };
+const BUILD = '20261101-1556'; // shown in the diagnostic so a cached old copy is easy to spot
+const $statusText = document.getElementById('status-text') || $status;
+const status = (s) => { $statusText.textContent = s; $status.hidden = !s; };
+
+// Loading progress, one bar for the whole start-up: manifest, game data, the 30MB Ruby engine (the slow part
+// on a phone), engine start, then the first screen's images.
+const PROG_W = { list: 0.03, data: 0.17, wasm: 0.55, ruby: 0.1, img: 0.15 };
+const prog = { list: 0, data: 0, wasm: 0, ruby: 0, img: 0, wasmMB: 0 };
+let booting = true;
+function setProg(k, v) {
+  if (!booting) return;
+  prog[k] = Math.max(prog[k], Math.min(1, v));
+  stats.progressAt = Date.now();
+  let p = 0;
+  for (const key in PROG_W) p += PROG_W[key] * prog[key];
+  const bar = document.querySelector('#prog i'), pct = document.getElementById('prog-pct');
+  if (bar) bar.style.width = `${(p * 100).toFixed(1)}%`;
+  let label;
+  if (prog.ruby >= 1) label = '載入畫面…';
+  else if (prog.wasm >= 1) label = '啟動遊戲引擎…';
+  else if (prog.data < 1) label = '下載遊戲資料…';
+  else label = `下載遊戲引擎 ${prog.wasmMB.toFixed(1)} / 29.2 MB`;
+  status(label);
+  if (pct) pct.textContent = `${Math.floor(p * 100)}%`;
+}
+// the engine start has no progress of its own; creep while it runs so the bar never looks stuck
+setInterval(() => { if (booting && prog.wasm >= 1 && prog.ruby < 1) setProg('ruby', prog.ruby + (0.9 - prog.ruby) * 0.15); }, 400);
 const toast = (s) => {
   const t = document.createElement('div');
   t.className = 'toast';
@@ -359,7 +384,7 @@ async function decode({ path, pix }) {
   stats.decodes = (stats.decodes || 0) + 1;
   stats.lastDecode = performance.now();
   stats.lastPath = path;
-  if (started && !stats.frames) status(`載入圖片中…（${stats.decodes}）`);
+  if (started && !stats.frames) setProg('img', stats.decodes / 45);
   let w = -1, h = -1;
   try {
     const ac = new AbortController();
@@ -401,12 +426,12 @@ function paint() {
     frameImage.data.set(new Uint8Array(fb, 0, w * h * 4));
     Atomics.store(ctrl, CTRL.FRAME_PENDING, 0);
     view.putImageData(frameImage, 0, 0);
-    stats.frames++;
+    if (!stats.frames++) { booting = false; status(''); }
   }
   requestAnimationFrame(paint);
 }
 const qs = new URLSearchParams(location.search);
-const worker = new Worker('js/worker.js?v=20261101-1552', { type: 'module' });
+const worker = new Worker('js/worker.js?v=20261101-1556', { type: 'module' });
 window.gameWorker = worker;
 const stats = { frames: 0 };
 // Boot/runtime notes, shown on screen if the game never draws (phones have no dev console).
@@ -435,9 +460,11 @@ worker.onmessage = (e) => {
     case 'audio': audio.call(m); break;
     case 'resize': $screen.width = m.w; $screen.height = m.h; break;
     case 'save': idbPut(m.name, m.data); break;
-    case 'status': status(m.s); if (m.s) note(m.s); break;
+    case 'status': if (!booting) status(m.s); if (m.s) note(m.s); break;
+    case 'progress': if (m.k === 'wasm') prog.wasmMB = m.mb; setProg(m.k, m.v); break;
     case 'started':
       started = true;
+      setProg('ruby', 1);
       note('Ruby 啟動完成');
       stats.lastDecode = performance.now();
       // on a slow connection the first frame waits for many image downloads; only call it stuck when

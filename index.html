@@ -20,7 +20,10 @@
   html, body { margin: 0; height: 100%; background: #000; color: #ddd; font-family: system-ui, sans-serif; overflow: hidden; }
   #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
   #screen { width: min(100vw, calc(100vh * 4 / 3)); aspect-ratio: 4 / 3; image-rendering: pixelated; background: #000; }
-  #status { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 18px; }
+  #status { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 18px; width: min(80vw, 380px); text-align: center; }
+  #prog { margin: 14px 0 6px; height: 12px; border: 1px solid #667; border-radius: 6px; background: #1a1a24; overflow: hidden; }
+  #prog i { display: block; height: 100%; width: 0; background: linear-gradient(#ffd27a, #e8a33c); transition: width .3s; }
+  #prog-pct { font-size: 13px; color: #999; min-height: 1.2em; }
   #error { position: fixed; inset: 16px; overflow: auto; background: rgba(60,0,0,.92); color: #fdd; padding: 16px; white-space: pre-wrap; font: 13px/1.4 ui-monospace, monospace; }
   #bar { position: fixed; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 5; }
   #bar button { font: 13px system-ui, sans-serif; color: #eee; background: rgba(30,30,40,.75); border: 1px solid #556; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
@@ -89,23 +92,30 @@
   請將手機轉為橫向
   <small>iPhone 在 Safari 按「分享 → 加入主畫面」，<br>從主畫面開啟就沒有網址列，畫面更大。</small>
 </div>
-<div id="status">載入中…（版本 <span id="ver">20261101-1552</span>）</div>
+<div id="status"><div id="status-text">載入中…（版本 <span id="ver">20261101-1556</span>）</div><div id="prog"><i></i></div><div id="prog-pct"></div></div>
 <pre id="error" hidden></pre>
 <script>
   // if the game script fails to start (e.g. a half-updated copy in the browser cache), say so instead of "載入中…" forever
   window.addEventListener('error', (e) => {
     if (window.gameWorker) return;
-    const s = document.getElementById('status');
+    const s = document.getElementById('status-text');
     s.textContent = '啟動失敗，請點這裡重新整理。（' + (e.message || '') + '）';
     s.onclick = () => location.reload();
   });
-  setTimeout(() => {
-    const s = document.getElementById('status');
-    if (window.gameWorker || !/^載入中/.test(s.textContent)) return;
-    s.textContent = '還在載入中…如果一直卡住，請點這裡重新整理。';
+  // no progress for 15 s: offer a reload (the bar keeps moving while things are still loading)
+  (() => {
+  const t0 = Date.now();
+  const stuck = setInterval(() => {
+    const st = window.pageStats || {};
+    if (st.frames) { clearInterval(stuck); return; }
+    if (Date.now() - Math.max(t0, st.progressAt || 0) < 15000) return;
+    clearInterval(stuck);
+    const s = document.getElementById('status-text');
+    s.textContent = '好像卡住了，請點這裡重新整理。';
     s.onclick = () => location.reload();
-  }, 15000);
+  }, 1000);
+  })();
 </script>
-<script type="module" src="js/main.js?v=20261101-1552"></script>
+<script type="module" src="js/main.js?v=20261101-1556"></script>
 </body>
 </html>
