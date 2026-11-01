@@ -19,6 +19,20 @@ const toast = (s) => {
 
 if (!self.crossOriginIsolated) {
   status('正在啟用執行環境，頁面會自動重新整理…');
+  // if the service worker reload didn't help, say why instead of waiting forever
+  setTimeout(async () => {
+    const sw = navigator.serviceWorker;
+    const regs = sw ? (await sw.getRegistrations().catch(() => [])).length : 0;
+    status('');
+    $err.hidden = false;
+    $err.textContent = '這個瀏覽器沒有啟用跨來源隔離，遊戲無法執行。\n請按下方按鈕重新整理；若仍不行，請改用 Safari 或 Chrome 最新版。\n\n'
+      + `secure=${self.isSecureContext} sw=${!!sw} registered=${regs} controlled=${!!(sw && sw.controller)}\n${navigator.userAgent}`;
+    const b = document.createElement('button');
+    b.textContent = '重新整理';
+    b.style.cssText = 'display:block;margin-top:12px;font-size:16px;padding:8px 16px';
+    b.onclick = () => location.reload();
+    $err.appendChild(b);
+  }, 6000);
   throw new Error('not crossOriginIsolated');
 }
 

@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>龍珠Z RPG 網頁版</title>
 <!-- GitHub Pages can't send COOP/COEP headers; this service worker adds them (SharedArrayBuffer needs them) -->
+<script>
+  // Safari doesn't support COEP "credentialless" (coi-serviceworker's default outside Chrome/Firefox);
+  // every resource is same-origin, so "require-corp" works everywhere.
+  window.coi = { coepCredentialless: () => false };
+</script>
 <script src="coi-serviceworker.min.js"></script>
 <style>
   html, body { margin: 0; height: 100%; background: #000; color: #ddd; font-family: system-ui, sans-serif; overflow: hidden; }
