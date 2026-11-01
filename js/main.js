@@ -1,5 +1,5 @@
 // Page side: shows frames from the game worker, plays audio, feeds input, decodes images, keeps saves.
-import { CTRL, NKEYS } from './rgss.js?v=20261101-1556';
+import { CTRL, NKEYS } from './rgss.js?v=20261101-1600';
 
 const GAME = 'game/';
 // '~/…' paths are our Traditional-Chinese replacements in overrides/, everything else is the original game
@@ -8,7 +8,7 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
-const BUILD = '20261101-1556'; // shown in the diagnostic so a cached old copy is easy to spot
+const BUILD = '20261101-1600'; // shown in the diagnostic so a cached old copy is easy to spot
 const $statusText = document.getElementById('status-text') || $status;
 const status = (s) => { $statusText.textContent = s; $status.hidden = !s; };
 
@@ -273,6 +273,18 @@ const $btnExp = document.getElementById('btn-exp');
 if ($btnExp) $btnExp.onclick = () => setExpRate(EXP_RATES[(EXP_RATES.indexOf(expRate) + 1) % EXP_RATES.length]);
 setExpRate(expRate);
 
+// 略過對話: messages fast-forward by themselves and cutscenes run 6× (off by default, not remembered)
+let skipTalk = false;
+const $btnSkip = document.getElementById('btn-skip');
+function setSkip(on) {
+  skipTalk = on;
+  Atomics.store(ctrl, CTRL.SKIP, on ? 1 : 0);
+  if (!$btnSkip) return;
+  $btnSkip.classList.toggle('on', on);
+  $btnSkip.textContent = on ? '略過中…' : '略過對話';
+}
+if ($btnSkip) $btnSkip.onclick = () => setSkip(!skipTalk);
+
 function onQuick(m) {
   if (!m.ok) { toast(m.msg); return; }
   if (m.op === 'save') {
@@ -380,6 +392,11 @@ class AudioSys {
 const audio = new AudioSys();
 
 // ---------- image decoding for the worker ----------
+// The game asks for images one at a time and waits for each; on a phone every round trip costs ~0.3s+.
+// Fetch the ones the opening needs all at once, while the engine downloads.
+const PRELOAD = ["Graphics/Pictures/Z1_顔イベント.PNG", "Graphics/System/TileA1.png", "Graphics/System/TileA2.png", "Graphics/System/TileA3.png", "Graphics/System/TileA4.png", "Graphics/System/TileA5.png", "Graphics/System/TileB.png", "Graphics/System/TileC.png", "Graphics/System/TileD.png", "Graphics/System/TileE.png", "Graphics/Characters/Vehicle.png", "Graphics/System/Shadow.png", "Graphics/System/Z1_Window.png", "Graphics/System/MessageBack.png", "Graphics/Pictures/z1_opnami1.png", "Graphics/Pictures/z1_opkumo.png", "Graphics/Pictures/z1_ophikaru1.PNG", "Graphics/Pictures/z1_oputyuu1.PNG", "Graphics/Pictures/z1_opnami2.png", "Graphics/Pictures/z1_opnami3.png", "Graphics/Pictures/z1_ophikaru2.PNG", "Graphics/Pictures/z1_ophikaru3.PNG", "Graphics/Pictures/z1_ophikaru4.PNG", "Graphics/Pictures/z1_opdb1.PNG", "Graphics/Pictures/z1_opdb2.PNG", "Graphics/Pictures/z1_opdb3.PNG", "Graphics/Pictures/z1_opdb4.PNG", "Graphics/Pictures/z1_opdb5.PNG", "Graphics/Pictures/z1_opdb6.PNG", "Graphics/Pictures/z1_opdb7.png", "Graphics/Pictures/z1_oputyuu2.PNG", "Graphics/Pictures/z1_oputyuu3.PNG", "Graphics/Pictures/z1_oputyuu4.PNG", "Graphics/Pictures/z1_oputyuu5.PNG", "Graphics/Pictures/z1_oputyuu6.PNG", "Graphics/Pictures/z1_oputyuu7.PNG", "Graphics/Pictures/z1_oputyuu8.PNG", "Graphics/Pictures/z1_oputyuu9.PNG", "Graphics/Pictures/z1_oputyuu10.PNG", "Graphics/Pictures/z1_oputyuu11.PNG", "Graphics/Pictures/z1_oputyuu12.PNG", "Graphics/Pictures/z1_oputyuu13.PNG", "Graphics/Pictures/z1_oputyuu14.PNG", "Graphics/Pictures/z1_oputyuu15.PNG", "Graphics/Pictures/z1_oputyuu16.PNG", "Graphics/Pictures/z1_oputyuu17.PNG", "Graphics/Pictures/z1_oputyuu18.PNG", "Graphics/Pictures/z1_utyuusen1.PNG", "Graphics/Pictures/z1_utyuusen2.PNG", "Graphics/Pictures/z1_utyuusen3.PNG", "Graphics/Pictures/z1_utyuusen4.PNG", "Graphics/Pictures/z1_utyuusen5.PNG", "Graphics/Pictures/z1_utyuusen6.PNG", "Graphics/Pictures/z1_utyuusen7.PNG", "Graphics/Pictures/z1_utyuusen8.PNG", "Graphics/Pictures/z1_utyuusen9.PNG", "Graphics/Pictures/z1_utyuusen10.PNG"];
+const preloaded = new Map(PRELOAD.map((p) => [p, fetch(gameUrl(p)).then((r) => (r.ok ? r.blob() : null)).catch(() => null)]));
+
 async function decode({ path, pix }) {
   stats.decodes = (stats.decodes || 0) + 1;
   stats.lastDecode = performance.now();
@@ -389,7 +406,9 @@ async function decode({ path, pix }) {
   try {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 30000);
-    const blob = await (await fetch(gameUrl(path), { signal: ac.signal })).blob();
+    const pre = preloaded.get(path);
+    preloaded.delete(path);
+    const blob = (pre && await pre) || await (await fetch(gameUrl(path), { signal: ac.signal })).blob();
     clearTimeout(timer);
     const bmp = await createImageBitmap(blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
     w = bmp.width; h = bmp.height;
@@ -431,7 +450,7 @@ function paint() {
   requestAnimationFrame(paint);
 }
 const qs = new URLSearchParams(location.search);
-const worker = new Worker('js/worker.js?v=20261101-1556', { type: 'module' });
+const worker = new Worker('js/worker.js?v=20261101-1600', { type: 'module' });
 window.gameWorker = worker;
 const stats = { frames: 0 };
 // Boot/runtime notes, shown on screen if the game never draws (phones have no dev console).

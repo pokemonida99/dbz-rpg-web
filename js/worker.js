@@ -1,9 +1,9 @@
 // Runs ruby.wasm + the game in a worker so Graphics.update can block synchronously.
 import { RubyVM } from '../vendor/wasm-wasi-2.10.1/package/dist/esm/vm.js';
 import { WASI, File, Directory, OpenFile, PreopenDirectory, ConsoleStdout } from '../vendor/browser_wasi_shim-0.4.2/package/dist/index.js';
-import { Runtime, CTRL } from './rgss.js?v=20261101-1556';
+import { Runtime, CTRL } from './rgss.js?v=20261101-1600';
 
-const VER = '20261101-1556'; // stamped by tools/bump.py so a new version never mixes with cached old files
+const VER = '20261101-1600'; // stamped by tools/bump.py so a new version never mixes with cached old files
 
 const GAME = '../game/';
 const RUBY_WASM = '../vendor/3.4-wasm-wasi-2.10.1/package/dist/ruby+stdlib.wasm';
@@ -148,6 +148,7 @@ async function start(init) {
   RG.halt = (bt) => { console.log('exit', bt); status('遊戲結束'); };
   RG.warn = (s) => console.warn(String(s));
   RG.expRate = () => Atomics.load(RG.ctrl, CTRL.EXP_RATE) || 1; // page's 經驗 button
+  RG.skipTalk = () => Atomics.load(RG.ctrl, CTRL.SKIP); // page's 略過對話 button
   RG.patchesFor = () => patchRb;
 
   status('載入字型…');

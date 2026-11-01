@@ -34,8 +34,16 @@ RGSS_SRC_PATCHES = {
     ["@wait_count = 15 if $game_switches[482] == false", "@wait_count = 5 if $game_switches[482] == false"],
     ["@wait_count = 60 if $game_switches[482] == false", "@wait_count = 15 if $game_switches[482] == false"],
     ['@text += $game_message.texts[i].clone + "\x00"', '@text += rgss_s2t($game_message.texts[i].clone) + "\x00"'],
+    # 略過對話 button: show each line at once, no pauses inside lines, turn pages by itself
+    # (the game's own fast-forward is holding R + confirm, awkward on a phone); choices still wait for the player
+    ["        @line_show_fast = true if ($game_switches[881] == true or", "        @line_show_fast = true if rgss_skip? or ($game_switches[881] == true or"],
+    ["@wait_count = 5 if $game_switches[482] == false", "@wait_count = 5 if $game_switches[482] == false && !rgss_skip?"],
+    ["@wait_count = 15 if $game_switches[482] == false", "@wait_count = 15 if $game_switches[482] == false && !rgss_skip?"],
+    ["    if Input.trigger?(Input::B) or Input.trigger?(Input::C) or ($game_variables[357]", "    if rgss_skip? or Input.trigger?(Input::B) or Input.trigger?(Input::C) or ($game_variables[357]"],
   ],
 }
+
+def rgss_skip? = RG.call(:skipTalk).to_i == 1 # the page's 略過對話 button
 
 def rgss_patch_source(name, src)
   (RGSS_SRC_PATCHES[name] || []).each do |from, to|

@@ -71,7 +71,7 @@ class S2T {
 export const CTRL = {
   IMG_STATE: 0, IMG_W: 1, IMG_H: 2, IMG_NEED: 3,
   KEYS: 8, LATCH: 32, FAST_BATTLE: 52, PAUSE: 53, REQ_SLOT: 54, REQ: 55,
-  FB_W: 56, FB_H: 57, FRAME_PENDING: 58, CMD: 59, RESET: 60, EXP_RATE: 61, SLEEP: 63, SIZE: 64,
+  FB_W: 56, FB_H: 57, FRAME_PENDING: 58, CMD: 59, RESET: 60, EXP_RATE: 61, SKIP: 62, SLEEP: 63, SIZE: 64,
 };
 export const NKEYS = 20;
 const DECODED_BUDGET = 3e6; // pixels of decoded images kept for reuse (~12MB)
@@ -802,7 +802,9 @@ export class Runtime {
     this.stats.frames++;
     for (const f of this.frameHooks) f(this.stats.frames);
     while (Atomics.load(c, CTRL.PAUSE)) Atomics.wait(c, CTRL.PAUSE, 1, 250);
-    const speed = (this.turbo || 1) * (battle && Atomics.load(c, CTRL.FAST_BATTLE) ? 2 : 1);
+    // 略過對話 also runs cutscenes 6× faster (outside battle)
+    const skip = !battle && Atomics.load(c, CTRL.SKIP);
+    const speed = (this.turbo || 1) * (battle && Atomics.load(c, CTRL.FAST_BATTLE) ? 2 : 1) * (skip ? 6 : 1);
     const step = 1000 / (fps * speed);
     let now = performance.now();
     if (!this.nextTime || now - this.nextTime > 250) this.nextTime = now;
