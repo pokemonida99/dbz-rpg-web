@@ -8,6 +8,7 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
+const BUILD = '2026-11-01b'; // shown in the diagnostic so a cached old copy is easy to spot
 const status = (s) => { $status.textContent = s; $status.hidden = !s; };
 const toast = (s) => {
   const t = document.createElement('div');
@@ -345,7 +346,10 @@ async function decode({ path, pix }) {
   if (started && !stats.frames) status(`載入圖片中…（${stats.decodes}）`);
   let w = -1, h = -1;
   try {
-    const blob = await (await fetch(gameUrl(path))).blob();
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 30000);
+    const blob = await (await fetch(gameUrl(path), { signal: ac.signal })).blob();
+    clearTimeout(timer);
     const bmp = await createImageBitmap(blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
     w = bmp.width; h = bmp.height;
     const need = w * h * 4;
@@ -401,8 +405,9 @@ const note = (s) => {
 window.diag = diag;
 function showDiag(reason) {
   $err.hidden = false;
-  $err.textContent = `${reason}\n請截圖這個畫面回報。\n\n畫面幀=${stats.frames} 隔離=${self.crossOriginIsolated}\n${navigator.userAgent}\n\n${diag.join('\n')}`;
+  $err.textContent = `${reason}\n請先點這個畫面重新整理一次；還是不行再截圖回報。\n\n版本=${BUILD} 畫面幀=${stats.frames} 隔離=${self.crossOriginIsolated}\n${navigator.userAgent}\n\n${diag.join('\n')}`;
 }
+$err.addEventListener('click', () => location.reload());
 let started = false;
 setTimeout(() => { if (!started) showDiag('遊戲 60 秒內沒有啟動完成。'); }, 60000);
 window.pageStats = stats;
