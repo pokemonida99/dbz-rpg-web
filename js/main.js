@@ -8,7 +8,7 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
-const BUILD = '2026-11-01d'; // shown in the diagnostic so a cached old copy is easy to spot
+const BUILD = '2026-11-01e'; // shown in the diagnostic so a cached old copy is easy to spot
 const status = (s) => { $status.textContent = s; $status.hidden = !s; };
 const toast = (s) => {
   const t = document.createElement('div');
@@ -466,7 +466,7 @@ worker.onerror = (e) => { note(`worker 錯誤：${e.message || e} ${e.filename |
   worker.postMessage({
     t: 'init',
     ctrl: ctrlBuf,
-    pix: new SharedArrayBuffer(16 << 20),
+    pix: new SharedArrayBuffer(1 << 20), // grows when an image needs more (CTRL.IMG_NEED); small start helps phones with less memory
     cmdBuf,
     fb,
     saves,
