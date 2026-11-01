@@ -8,6 +8,9 @@ RGSS_SRC_PATCHES = {
   # cache compiled event scripts (see RGSSEvalCache)
   'Game_Interpreter' => [
     ["result = eval(@params[1])", "result = rgss_eval(@params[1])"],
+    # a "wait" right before the next line of dialogue is just dead air between lines; keep it short
+    ["  def command_230\n    @wait_count = @params[0]\n",
+     "  def command_230\n    @wait_count = @params[0]\n    nxt = @list[@index + 1, 2].to_a.map(&:code)\n    @wait_count = [@wait_count, 6].min if nxt.include?(101)\n"],
     ["      eval(script)\n", "      rgss_eval(script)\n"],
   ],
   'Game_Character' => [
@@ -23,6 +26,9 @@ RGSS_SRC_PATCHES = {
   ],
   # message window text is also drawn character by character
   'Window_Message' => [
+    # the dialogue is full of \. (1/4 s) and \| (1 s) pauses; keep a hint of the rhythm but not the drag
+    ["@wait_count = 15 if $game_switches[482] == false", "@wait_count = 5 if $game_switches[482] == false"],
+    ["@wait_count = 60 if $game_switches[482] == false", "@wait_count = 15 if $game_switches[482] == false"],
     ['@text += $game_message.texts[i].clone + "\x00"', '@text += rgss_s2t($game_message.texts[i].clone) + "\x00"'],
   ],
 }
