@@ -74,6 +74,7 @@ export const CTRL = {
   FB_W: 56, FB_H: 57, FRAME_PENDING: 58, CMD: 59, RESET: 60, EXP_RATE: 61, SLEEP: 63, SIZE: 64,
 };
 export const NKEYS = 20;
+const DECODED_BUDGET = 3e6; // pixels of decoded images kept for reuse (~12MB)
 
 // All canvases are CPU-backed (willReadFrequently): a GPU context loss in the worker would wipe every
 // bitmap the game holds, and the game reads pixels back often anyway.
@@ -163,13 +164,26 @@ export class Runtime {
     }
   }
 
+  // Decoded images are kept in a small most-recently-used cache: the game's own Cache module already keeps
+  // the bitmaps it reuses, and keeping every image ever loaded doubled the image memory (phones with 4GB
+  // such as the iPhone 13 mini crashed).
   loadImage(real) {
-    if (!this.decoded.has(real)) {
-      const cv = this.decodeSync(real);
+    let cv = this.decoded.get(real);
+    if (cv !== undefined) {
+      this.decoded.delete(real); // move to the most-recent end
+    } else {
+      cv = this.decodeSync(real);
       if (cv && cv.width * cv.height > 2e6) this.host.post({ t: 'dbglog', s: `big image ${real} ${cv.width}x${cv.height}` });
-      this.decoded.set(real, cv);
     }
-    return this.decoded.get(real);
+    this.decoded.set(real, cv);
+    let px = 0;
+    for (const c of this.decoded.values()) if (c) px += c.width * c.height;
+    for (const [k, c] of this.decoded) {
+      if (px <= DECODED_BUDGET || k === real) break;
+      if (c) px -= c.width * c.height;
+      this.decoded.delete(k);
+    }
+    return cv;
   }
 
   // ---------- bitmap API ----------
