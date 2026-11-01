@@ -8,7 +8,7 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
-const BUILD = '2026-11-01c'; // shown in the diagnostic so a cached old copy is easy to spot
+const BUILD = '2026-11-01d'; // shown in the diagnostic so a cached old copy is easy to spot
 const status = (s) => { $status.textContent = s; $status.hidden = !s; };
 const toast = (s) => {
   const t = document.createElement('div');
@@ -231,6 +231,20 @@ function setFastBattle(on) {
 }
 document.getElementById('btn-speed').onclick = () => setFastBattle(!fastBattle);
 setFastBattle(fastBattle);
+
+// battle EXP multiplier: 10× by default for faster levelling; tap to cycle 10× → 5× → 1×
+const EXP_RATES = [10, 5, 1];
+let expRate = (() => { try { return Number(localStorage.getItem('dbz-exp-rate')) || 10; } catch (e) { return 10; } })();
+function setExpRate(r) {
+  expRate = EXP_RATES.includes(r) ? r : 10;
+  Atomics.store(ctrl, CTRL.EXP_RATE, expRate);
+  const b = document.getElementById('btn-exp');
+  b.textContent = `經驗 ${expRate}×`;
+  b.classList.toggle('on', expRate > 1);
+  try { localStorage.setItem('dbz-exp-rate', String(expRate)); } catch (e) { /* private mode */ }
+}
+document.getElementById('btn-exp').onclick = () => setExpRate(EXP_RATES[(EXP_RATES.indexOf(expRate) + 1) % EXP_RATES.length]);
+setExpRate(expRate);
 
 function onQuick(m) {
   if (!m.ok) { toast(m.msg); return; }

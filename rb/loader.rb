@@ -24,6 +24,10 @@ RGSS_SRC_PATCHES = {
     ["  mozi = convert_special_characters mozi\n  mozi_num = mozi.split(//u).size\n  #p mozi,mozi_num\n  $tec_mozi=Bitmap.new(24*(mozi_num)+24, 24)\n  $tec_mozi.set_text_content(mozi)",
      "  mozi = rgss_s2t(convert_special_characters(mozi))\n  mozi_num = mozi.split(//u).size\n  $tec_mozi=Bitmap.new(24*(mozi_num)+24, 24)\n  $tec_mozi.set_text_content(mozi)"],
   ],
+  # battle EXP × the page's 經驗 setting (on top of the game's own $exp_rate bonus)
+  'Scene_Db_Battle' => [
+    ["@total_exp = @total_exp * $exp_rate\n", "@total_exp = @total_exp * $exp_rate * RG.call(:expRate).to_i\n"],
+  ],
   # message window text is also drawn character by character
   'Window_Message' => [
     # the dialogue is full of \. (1/4 s) and \| (1 s) pauses; keep a hint of the rhythm but not the drag

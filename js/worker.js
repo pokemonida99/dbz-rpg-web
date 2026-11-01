@@ -1,7 +1,7 @@
 // Runs ruby.wasm + the game in a worker so Graphics.update can block synchronously.
 import { RubyVM } from '../vendor/wasm-wasi-2.10.1/package/dist/esm/vm.js';
 import { WASI, File, Directory, OpenFile, PreopenDirectory, ConsoleStdout } from '../vendor/browser_wasi_shim-0.4.2/package/dist/index.js';
-import { Runtime } from './rgss.js';
+import { Runtime, CTRL } from './rgss.js';
 
 const GAME = '../game/';
 const RUBY_WASM = '../vendor/3.4-wasm-wasi-2.10.1/package/dist/ruby+stdlib.wasm';
@@ -118,6 +118,7 @@ async function start(init) {
   RG.fatal = (s) => post({ t: 'fatal', s: String(s) });
   RG.halt = (bt) => { console.log('exit', bt); status('遊戲結束'); };
   RG.warn = (s) => console.warn(String(s));
+  RG.expRate = () => Atomics.load(RG.ctrl, CTRL.EXP_RATE) || 1; // page's 經驗 button
   RG.patchesFor = () => patchRb;
 
   status('載入字型…');
