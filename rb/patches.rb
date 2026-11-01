@@ -113,7 +113,7 @@ module RGSSQuick
     end
 
     def describe
-      name = (load_data('Data/MapInfos.rvdata')[$game_map.map_id].name rescue '').to_s
+      name = rgss_map_name((load_data('Data/MapInfos.rvdata')[$game_map.map_id].name rescue '').to_s)
       sec = Graphics.frame_count / 60
       format('%s　遊戲時間 %d:%02d', name, sec / 3600, sec / 60 % 60)
     end

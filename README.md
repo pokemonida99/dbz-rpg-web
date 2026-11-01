@@ -61,7 +61,7 @@ Ruby 在 worker 裡同步執行，`Graphics.update` 用 `Atomics.wait` 等下一
 - 逐字繪製的地方（對話框、選單文字）先整句轉換再拆字，才能用到詞組：見 `rb/loader.rb` 的原始碼修補。
 - 重建詞庫：`python3 tools/build_s2t.py <corpus.txt> js/s2t.json`（OpenCC 字典在 `tools/opencc/`；音譯人名用字如 里、托、台 預設不轉）。
 - 字型 `fonts/GameTC.woff2`：Noto Sans TC Bold，只保留遊戲會用到的 6616 字（`tools/build_font.py`）。
-- 內嵌簡體字的圖片重畫成繁體放在 `overrides/`（`tools/build_tc_images.py`），目前有角色名稱圖 `名前.PNG`。
+- 內嵌簡體字的圖片重畫成繁體放在 `overrides/`（`tools/build_tc_images.py`），目前有角色名稱圖 `名前.PNG` 與技能名稱圖 `文字_必殺技.png`（用 macOS Vision OCR 掃過全部圖片，其餘含簡體字的圖都沒被遊戲使用）。
 
 ## 隨時存讀檔
 

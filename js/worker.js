@@ -111,8 +111,8 @@ async function start(init) {
   RG.setManifest(manifest);
   RG.setOverrides(overrides);
   RG.setS2T(s2t);
-  const [rgssRb, rpgRb, patchRb, loaderRb] = await Promise.all(
-    ['rgss.rb', 'rpg.rb', 'patches.rb', 'loader.rb'].map(async (p) => (await fetch('../rb/' + p)).text()));
+  const [rgssRb, rpgRb, patchRb, loaderRb, mapNamesRb] = await Promise.all(
+    ['rgss.rb', 'rpg.rb', 'patches.rb', 'loader.rb', 'map_names.rb'].map(async (p) => (await fetch('../rb/' + p)).text()));
 
   RG.alert = (s) => post({ t: 'toast', s: String(s) });
   RG.fatal = (s) => post({ t: 'fatal', s: String(s) });
@@ -144,6 +144,7 @@ async function start(init) {
 
   vm.eval(rgssRb);
   vm.eval(rpgRb);
+  vm.eval(mapNamesRb);
   RG.mem = () => instance.exports.memory.buffer.byteLength;
   RG.dbg = (s) => post({ t: 'dbglog', s: String(s) });
   if (init.nogc) vm.eval('GC.disable');
