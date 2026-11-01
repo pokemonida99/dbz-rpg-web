@@ -5,13 +5,19 @@
 
 ## 執行
 
+線上版：https://pokemonida99.github.io/dbz-rpg-web/ （GitHub Pages，`main` 分支根目錄；`coi-serviceworker.min.js` 補上 COOP/COEP）
+
+本機：
+
 ```bash
 python3 tools/serve.py 8777
 ```
 
+這個 repo 就是唯一的原始碼。8765 埠被其他服務佔用，不要用。
+
 開 http://localhost:8777/ 。伺服器必須送出 COOP/COEP 標頭（SharedArrayBuffer 需要），所以不能用一般的 `http.server`。
 
-`game/` 是指向 `original/龍珠Z_RPG_Ver1.072漢化修復版` 的連結；改了素材後重跑 `python3 tools/manifest.py game manifest.json`。
+`game/` 是遊戲素材（只含網頁版需要的檔）；改了素材後重跑 `python3 tools/manifest.py game manifest.json`。
 
 ## 架構
 
