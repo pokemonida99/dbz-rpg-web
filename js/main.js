@@ -339,6 +339,10 @@ const audio = new AudioSys();
 
 // ---------- image decoding for the worker ----------
 async function decode({ path, pix }) {
+  stats.decodes = (stats.decodes || 0) + 1;
+  stats.lastDecode = performance.now();
+  stats.lastPath = path;
+  if (started && !stats.frames) status(`載入圖片中…（${stats.decodes}）`);
   let w = -1, h = -1;
   try {
     const blob = await (await fetch(gameUrl(path))).blob();
@@ -414,7 +418,16 @@ worker.onmessage = (e) => {
     case 'started':
       started = true;
       note('Ruby 啟動完成');
-      setTimeout(() => { if (stats.frames === 0) showDiag('遊戲已啟動但畫面沒有更新。'); }, 15000);
+      stats.lastDecode = performance.now();
+      // on a slow connection the first frame waits for many image downloads; only call it stuck when
+      // nothing has arrived for a while
+      const check = setInterval(() => {
+        if (stats.frames > 0) { clearInterval(check); status(''); return; }
+        if (performance.now() - stats.lastDecode > 12000) {
+          clearInterval(check);
+          showDiag(`遊戲已啟動但畫面沒有更新（已載入 ${stats.decodes || 0} 張圖，最後一張：${stats.lastPath || '無'}）。`);
+        }
+      }, 1000);
       break;
     case 'note': note(m.s); break;
     case 'debug': stats.debug = m; break;
