@@ -72,7 +72,5 @@ Ruby 在 worker 裡同步執行，`Graphics.update` 用 `Atomics.wait` 等下一
 
 ## 尚未完成
 
-- MIDI 背景音樂（42 首 .mid）尚未播放
-- 音效實際聽感未驗證
-- iPhone Safari 尚未在實機驗證（使用者回報黑畫面，已加診斷資訊待回報）
+- MIDI 背景音樂（42 首 .mid）未播放；使用者覺得目前的音樂已足夠，暫不處理
 - 部署（GitHub Pages 需要 coi-serviceworker 補 COOP/COEP；檔名需轉成 NFC）
