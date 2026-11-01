@@ -80,3 +80,10 @@ Ruby 在 worker 裡同步執行，`Graphics.update` 用 `Atomics.wait` 等下一
 ## 發佈
 
 每次推上去之前先跑 `python3 tools/bump.py`：所有程式、腳本、資料的網址都會帶上新版本號，手機不會把快取的舊檔和新檔混用。
+
+## 預編譯腳本（加快啟動）
+
+`rb/scripts.iseq` 是遊戲腳本預先編譯好的版本，啟動時直接載入（電腦上腳本載入從約 5.4 秒降到 0.5 秒）。
+改了 `rb/loader.rb` 裡對遊戲腳本的修補（`RGSS_SRC_PATCHES`）之後要重新產生：開 `tools/serve.py` 的本機版
+`?debug`，在瀏覽器主控台執行 `rubyEval('rgss_build_iseq')`，它會寫回 `rb/scripts.iseq`。
+沒重新產生也不會出錯：對不上的腳本會自動改回讀原始碼，只是那幾個會比較慢。

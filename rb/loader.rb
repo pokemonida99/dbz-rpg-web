@@ -56,15 +56,50 @@ def rgss_patch_source(name, src)
   src
 end
 
-def rgss_run_scripts
-  $RGSS_SCRIPTS.each_with_index do |(_id, name, code), i|
+# Each game script as it will run: [index, name, patched source]
+def rgss_script_sources
+  $RGSS_SCRIPTS.each_with_index.filter_map do |(_id, name, code), i|
     name = name.to_s.force_encoding('UTF-8')
     src = Zlib::Inflate.inflate(code).force_encoding('UTF-8').gsub("\r\n", "\n")
-    next if src.strip.empty?
-    src = rgss_patch_source(name, src)
-    eval(RG.call(:patchesFor, 'before', name).to_s, TOPLEVEL_BINDING, "patch:#{name}") if name == 'Main'
-    eval(src, TOPLEVEL_BINDING, format('%03d:%s', i, name))
+    [i, name, rgss_patch_source(name, src)] unless src.strip.empty?
   end
+end
+
+# Parsing the 190k lines of game scripts is the slowest part of starting up on a phone. rb/scripts.iseq holds
+# them precompiled ({index => [crc32 of the patched source, iseq binary]}, made by rgss_build_iseq); a script
+# whose source no longer matches (a patch changed) is parsed from text as before.
+def rgss_run_scripts
+  bundle = (Marshal.load(File.binread('__iseq.bin')) rescue nil) if File.exist?('__iseq.bin')
+  t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  fast = 0
+  rgss_script_sources.each do |i, name, src|
+    if name == 'Main' # everything before Main only defines classes; report how long that took
+      RG.call(:note, "腳本載入 #{((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round}ms（預編譯 #{fast} 個）")
+    end
+    eval(RG.call(:patchesFor, 'before', name).to_s, TOPLEVEL_BINDING, "patch:#{name}") if name == 'Main'
+    pre = bundle && bundle[i]
+    if pre && pre[0] == Zlib.crc32(src)
+      RubyVM::InstructionSequence.load_from_binary(pre[1]).eval
+      fast += 1
+    else
+      eval(src, TOPLEVEL_BINDING, format('%03d:%s', i, name))
+    end
+  end
+end
+
+# Dev tool (run from the ?debug console: rubyEval('rgss_build_iseq')): precompiles every script that can run on
+# its own and uploads the bundle to the local tools/serve.py as rb/scripts.iseq. Main, and scripts with
+# top-level local variables (they share TOPLEVEL_BINDING with later scripts), stay as text.
+def rgss_build_iseq
+  bundle = {}
+  rgss_script_sources.each do |i, name, src|
+    next if name == 'Main'
+    iseq = RubyVM::InstructionSequence.compile(src, format('%03d:%s', i, name))
+    next unless iseq.to_a[10].empty? # top-level locals
+    bundle[i] = [Zlib.crc32(src), iseq.to_binary]
+  end
+  RG.call(:upload, 'scripts.iseq', [Marshal.dump(bundle)].pack('m0'))
+  RG.call(:dbg, "iseq bundle: #{bundle.size}/#{$RGSS_SCRIPTS.size} scripts")
 end
 
 # Keeps running scenes after a quick load (RGSSJump) or F12 reset abandons the current one.

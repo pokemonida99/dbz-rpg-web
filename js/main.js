@@ -1,5 +1,5 @@
 // Page side: shows frames from the game worker, plays audio, feeds input, decodes images, keeps saves.
-import { CTRL, NKEYS } from './rgss.js?v=20261101-1600';
+import { CTRL, NKEYS } from './rgss.js?v=20261101-1620';
 
 const GAME = 'game/';
 // '~/…' paths are our Traditional-Chinese replacements in overrides/, everything else is the original game
@@ -8,7 +8,7 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
-const BUILD = '20261101-1600'; // shown in the diagnostic so a cached old copy is easy to spot
+const BUILD = '20261101-1620'; // shown in the diagnostic so a cached old copy is easy to spot
 const $statusText = document.getElementById('status-text') || $status;
 const status = (s) => { $statusText.textContent = s; $status.hidden = !s; };
 
@@ -445,12 +445,16 @@ function paint() {
     frameImage.data.set(new Uint8Array(fb, 0, w * h * 4));
     Atomics.store(ctrl, CTRL.FRAME_PENDING, 0);
     view.putImageData(frameImage, 0, 0);
-    if (!stats.frames++) { booting = false; status(''); }
+    if (!stats.frames++) {
+      booting = false;
+      status('');
+      if (stats.stuckShown) $err.hidden = true; // it was only slow (e.g. the page was in the background)
+    }
   }
   requestAnimationFrame(paint);
 }
 const qs = new URLSearchParams(location.search);
-const worker = new Worker('js/worker.js?v=20261101-1600', { type: 'module' });
+const worker = new Worker('js/worker.js?v=20261101-1620', { type: 'module' });
 window.gameWorker = worker;
 const stats = { frames: 0 };
 // Boot/runtime notes, shown on screen if the game never draws (phones have no dev console).
@@ -490,8 +494,10 @@ worker.onmessage = (e) => {
       // nothing has arrived for a while
       const check = setInterval(() => {
         if (stats.frames > 0) { clearInterval(check); status(''); return; }
+        if (document.hidden) { stats.lastDecode = performance.now(); return; } // the page doesn't draw while in the background
         if (performance.now() - stats.lastDecode > 12000) {
           clearInterval(check);
+          stats.stuckShown = true;
           showDiag(`遊戲已啟動但畫面沒有更新（已載入 ${stats.decodes || 0} 張圖，最後一張：${stats.lastPath || '無'}）。`);
         }
       }, 1000);

@@ -1,9 +1,9 @@
 // Runs ruby.wasm + the game in a worker so Graphics.update can block synchronously.
 import { RubyVM } from '../vendor/wasm-wasi-2.10.1/package/dist/esm/vm.js';
 import { WASI, File, Directory, OpenFile, PreopenDirectory, ConsoleStdout } from '../vendor/browser_wasi_shim-0.4.2/package/dist/index.js';
-import { Runtime, CTRL } from './rgss.js?v=20261101-1600';
+import { Runtime, CTRL } from './rgss.js?v=20261101-1620';
 
-const VER = '20261101-1600'; // stamped by tools/bump.py so a new version never mixes with cached old files
+const VER = '20261101-1620'; // stamped by tools/bump.py so a new version never mixes with cached old files
 
 const GAME = '../game/';
 const RUBY_WASM = '../vendor/3.4-wasm-wasi-2.10.1/package/dist/ruby+stdlib.wasm';
@@ -133,6 +133,8 @@ async function start(init) {
   // the engine is the biggest download; start it right away, alongside the game data
   const modP = WebAssembly.compileStreaming(fetchWasm());
   modP.catch(() => {}); // awaited below; avoid an unhandled-rejection report meanwhile
+  // precompiled game scripts (optional; see rgss_run_scripts in rb/loader.rb)
+  const iseqP = fetch(`../rb/scripts.iseq?v=${VER}`).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => b && new Uint8Array(b)).catch(() => null);
   status('載入清單…');
   const [manifest, overrides, s2t] = await Promise.all(
     ['../manifest.json', '../overrides/list.json', 's2t.json'].map(async (p) => (await fetch(`${p}?v=${VER}`)).json()));
@@ -150,11 +152,17 @@ async function start(init) {
   RG.expRate = () => Atomics.load(RG.ctrl, CTRL.EXP_RATE) || 1; // page's 經驗 button
   RG.skipTalk = () => Atomics.load(RG.ctrl, CTRL.SKIP); // page's 略過對話 button
   RG.patchesFor = () => patchRb;
+  RG.upload = (name, b64) => { // dev tool: rgss_build_iseq → tools/serve.py
+    const bin = Uint8Array.from(atob(String(b64)), (ch) => ch.charCodeAt(0));
+    fetch(`../rb/${name}`, { method: 'PUT', body: bin }).then((r) => post({ t: 'dbglog', s: `uploaded ${name} ${bin.length} bytes: ${r.status}` }));
+  };
 
   status('載入字型…');
   const fontP = loadFonts();
   status('建立檔案系統…');
   const root = await buildFs(manifest, init.saves);
+  const iseq = await iseqP;
+  if (iseq) root.set('__iseq.bin', new File(iseq));
   await fontP;
   RG.frameHooks.push(saveWatcher(root));
   RG.persist = (name) => {
@@ -178,6 +186,7 @@ async function start(init) {
   vm.eval(mapNamesRb);
   RG.mem = () => instance.exports.memory.buffer.byteLength;
   RG.dbg = (s) => post({ t: 'dbglog', s: String(s) });
+  RG.note = (s) => post({ t: 'note', s: String(s) }); // shown in the start-up diagnostic
   if (init.nogc) vm.eval('GC.disable');
   if (init.manualgc) vm.eval(`GC.disable; $RGSS_MANUAL_GC = ${Number(init.manualgc) || 120}`);
   if (init.debug) {
