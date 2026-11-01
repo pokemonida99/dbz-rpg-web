@@ -91,6 +91,15 @@
 </div>
 <div id="status">載入中…</div>
 <pre id="error" hidden></pre>
-<script type="module" src="js/main.js"></script>
+<script>
+  // if the game script fails to start (e.g. a half-updated copy in the browser cache), say so instead of "載入中…" forever
+  window.addEventListener('error', (e) => {
+    if (window.gameWorker) return;
+    const s = document.getElementById('status');
+    s.textContent = '啟動失敗，請點這裡重新整理。（' + (e.message || '') + '）';
+    s.onclick = () => location.reload();
+  });
+</script>
+<script type="module" src="js/main.js?v=20261101-1546"></script>
 </body>
 </html>

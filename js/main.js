@@ -1,5 +1,5 @@
 // Page side: shows frames from the game worker, plays audio, feeds input, decodes images, keeps saves.
-import { CTRL, NKEYS } from './rgss.js';
+import { CTRL, NKEYS } from './rgss.js?v=20261101-1546';
 
 const GAME = 'game/';
 // '~/…' paths are our Traditional-Chinese replacements in overrides/, everything else is the original game
@@ -8,7 +8,7 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
-const BUILD = '2026-11-01f'; // shown in the diagnostic so a cached old copy is easy to spot
+const BUILD = '20261101-1546'; // shown in the diagnostic so a cached old copy is easy to spot
 const status = (s) => { $status.textContent = s; $status.hidden = !s; };
 const toast = (s) => {
   const t = document.createElement('div');
@@ -239,11 +239,13 @@ function setExpRate(r) {
   expRate = EXP_RATES.includes(r) ? r : 10;
   Atomics.store(ctrl, CTRL.EXP_RATE, expRate);
   const b = document.getElementById('btn-exp');
+  if (!b) return;
   b.textContent = `經驗 ${expRate}×`;
   b.classList.toggle('on', expRate > 1);
   try { localStorage.setItem('dbz-exp-rate', String(expRate)); } catch (e) { /* private mode */ }
 }
-document.getElementById('btn-exp').onclick = () => setExpRate(EXP_RATES[(EXP_RATES.indexOf(expRate) + 1) % EXP_RATES.length]);
+const $btnExp = document.getElementById('btn-exp');
+if ($btnExp) $btnExp.onclick = () => setExpRate(EXP_RATES[(EXP_RATES.indexOf(expRate) + 1) % EXP_RATES.length]);
 setExpRate(expRate);
 
 function onQuick(m) {
@@ -404,7 +406,7 @@ function paint() {
   requestAnimationFrame(paint);
 }
 const qs = new URLSearchParams(location.search);
-const worker = new Worker('js/worker.js', { type: 'module' });
+const worker = new Worker('js/worker.js?v=20261101-1546', { type: 'module' });
 window.gameWorker = worker;
 const stats = { frames: 0 };
 // Boot/runtime notes, shown on screen if the game never draws (phones have no dev console).

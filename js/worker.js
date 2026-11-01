@@ -1,7 +1,9 @@
 // Runs ruby.wasm + the game in a worker so Graphics.update can block synchronously.
 import { RubyVM } from '../vendor/wasm-wasi-2.10.1/package/dist/esm/vm.js';
 import { WASI, File, Directory, OpenFile, PreopenDirectory, ConsoleStdout } from '../vendor/browser_wasi_shim-0.4.2/package/dist/index.js';
-import { Runtime, CTRL } from './rgss.js';
+import { Runtime, CTRL } from './rgss.js?v=20261101-1546';
+
+const VER = '20261101-1546'; // stamped by tools/bump.py so a new version never mixes with cached old files
 
 const GAME = '../game/';
 const RUBY_WASM = '../vendor/3.4-wasm-wasi-2.10.1/package/dist/ruby+stdlib.wasm';
@@ -107,12 +109,12 @@ async function start(init) {
 
   status('載入清單…');
   const [manifest, overrides, s2t] = await Promise.all(
-    ['../manifest.json', '../overrides/list.json', 's2t.json'].map(async (p) => (await fetch(p)).json()));
+    ['../manifest.json', '../overrides/list.json', 's2t.json'].map(async (p) => (await fetch(`${p}?v=${VER}`)).json()));
   RG.setManifest(manifest);
   RG.setOverrides(overrides);
   RG.setS2T(s2t);
   const [rgssRb, rpgRb, patchRb, loaderRb, mapNamesRb] = await Promise.all(
-    ['rgss.rb', 'rpg.rb', 'patches.rb', 'loader.rb', 'map_names.rb'].map(async (p) => (await fetch('../rb/' + p)).text()));
+    ['rgss.rb', 'rpg.rb', 'patches.rb', 'loader.rb', 'map_names.rb'].map(async (p) => (await fetch(`../rb/${p}?v=${VER}`)).text()));
 
   RG.alert = (s) => post({ t: 'toast', s: String(s) });
   RG.fatal = (s) => post({ t: 'fatal', s: String(s) });

@@ -76,3 +76,7 @@ Ruby 在 worker 裡同步執行，`Graphics.update` 用 `Atomics.wait` 等下一
 
 - MIDI 背景音樂（42 首 .mid）未播放；使用者覺得目前的音樂已足夠，暫不處理
 - 部署（GitHub Pages 需要 coi-serviceworker 補 COOP/COEP；檔名需轉成 NFC）
+
+## 發佈
+
+每次推上去之前先跑 `python3 tools/bump.py`：所有程式、腳本、資料的網址都會帶上新版本號，手機不會把快取的舊檔和新檔混用。
