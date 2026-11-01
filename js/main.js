@@ -8,7 +8,7 @@ const gameUrl = (p) => (p.startsWith('~/') ? 'overrides/' + p.slice(2) : GAME + 
 const $screen = document.getElementById('screen');
 const $status = document.getElementById('status');
 const $err = document.getElementById('error');
-const BUILD = '2026-11-01b'; // shown in the diagnostic so a cached old copy is easy to spot
+const BUILD = '2026-11-01c'; // shown in the diagnostic so a cached old copy is easy to spot
 const status = (s) => { $status.textContent = s; $status.hidden = !s; };
 const toast = (s) => {
   const t = document.createElement('div');

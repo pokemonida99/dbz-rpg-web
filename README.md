@@ -1,4 +1,6 @@
-# 龍珠Z RPG 網頁版（原型）
+# 龍珠Z RPG 經典版
+
+原版完整移植（橫向）。另有為手機直向重新設計的「重製版」：pokemonida99/dbz-rpg-web-1。
 
 在瀏覽器裡直接執行原版 RPG Maker VX（RGSS2）的遊戲腳本：ruby.wasm 跑 `Data/Scripts.rvdata` 的 19 萬行 Ruby，
 `rb/rgss.rb` + `js/rgss.js` 重新實作 RGSS2 的 Bitmap / Sprite / Window / Tilemap / Graphics / Input / Audio。
